@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>برنامج فرز المتقدمين</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      direction: rtl;
+      margin: 0;
+      background: linear-gradient(to right, #e3f2fd, #ffffff);
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background: #121212;
+      color: #eee;
+    }
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    body.dark .container {
+      background: #1e1e1e;
+      color: #eee;
+    }
+    h2 {
+      text-align: center;
+      color: #0d47a1;
+      margin-bottom: 25px;
+    }
+    label, input, select, button {
+      width: 100%;
+      display: block;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1976d2;
+    }
+    .dropdown { position: relative; width: 100%; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: inherit;
+      min-width: 100%;
+      z-index: 1;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+    }
+    .dropdown:hover .dropdown-content { display: block; }
+
+    /* ✅ تعديل الألوان حسب الوضع الليلي أو الفاتح */
+    .dropdown-content button {
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: right;
+      padding: 10px;
+      color: inherit;
+    }
+    body.dark .dropdown-content {
+      background-color: #2c2c2c;
+      border-color: #555;
+    }
+    body.dark .dropdown-content button:hover {
+      background-color: #444;
+    }
+    .dropdown-content button:hover {
+      background-color: #f0f0f0;
+    }
+
+    #mainApp { display: none; }
+    .progress-bar { display: none; height: 8px; background: #ddd; margin-top: 10px; border-radius: 5px; }
+    .progress-fill { height: 100%; width: 0; background: #2196f3; border-radius: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border-bottom: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #e3f2fd; }
+    body.dark th { background: #333; }
+    footer { text-align: center; margin-top: 40px; color: #888; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container" id="loginPage">
+    <h2>تسجيل الدخول</h2>
+    <label>الصفة الوظيفية:</label>
+    <select id="role">
+      <option value="مدير">مدير</option>
+      <option value="مساعد">مساعد مدير</option>
+      <option value="عضو">عضو</option>
+    </select>
+    <label>ادخل الكود:</label>
+    <input type="text" id="accessCode">
+    <label>كلمة المرور:</label>
+    <input type="password" id="password">
+    <button onclick="login()">تسجيل الدخول</button>
+    <div class="error" id="errorMsg" style="color:red; text-align:center;"></div>
+    <div class="support" style="text-align:center; margin-top:10px;">هل نسيت الكود؟ تواصل مع الدعم <br><strong>+963932175450</strong></div>
+  </div>
+
+  <div class="container" id="mainApp">
+    <h2>برنامج فرز المتقدمين</h2>
+    <div id="welcomeMessage" style="text-align:center; font-weight:bold; margin-bottom:20px;"></div>
+
+    <label>📄 رفع ملف Excel:
+      <input type="file" id="excelFile" accept=".xlsx">
+    </label>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+
+    <label>🔍 بحث حر:
+      <input type="text" id="freeSearch" placeholder="مثال: طب دمشق">
+    </label>
+    <label>🎓 التخصص:
+      <select id="field">
+        <option value="">الكل</option>
+        <option>طب</option>
+        <option>صيدلة</option>
+        <option>هندسة معلوماتية</option>
+        <option>هندسة</option>
+        <option>إدارة الأعمال</option>
+        <option>تربية</option>
+        <option>حقوق</option>
+        <option>اقتصاد</option>
+      </select>
+    </label>
+    <label>⚧️ الجنس:
+      <select id="gender">
+        <option value="">الكل</option>
+        <option>ذكر</option>
+        <option>أنثى</option>
+      </select>
+    </label>
+    <label>📍 المحافظة:
+      <select id="location">
+        <option value="">الكل</option>
+        <option>دمشق</option>
+        <option>ريف دمشق</option>
+        <option>حلب</option>
+        <option>حمص</option>
+        <option>اللاذقية</option>
+      </select>
+    </label>
+
+    <button onclick="filterData()">✅ ابدأ الفرز</button>
+
+    <button onclick="downloadFiltered()" style="background-color: #4caf50;">📥 تحميل النتائج بعد الفرز</button>
+
+    <div class="dropdown">
+      <button class="settings-btn">⚙️ الإعدادات</button>
+      <div class="dropdown-content">
+        <button onclick="logout()">🚪 تسجيل الخروج</button>
+        <button onclick="toggleDarkMode()">🌓 تبديل الوضع الليلي</button>
+        <button onclick="toggleRoleChange()">🔄 تبديل الصفة الوظيفية</button>
+      </div>
+    </div>
+
+    <div id="countResult" style="text-align:center; margin-top:10px; font-weight:bold;"></div>
+    <table id="resultsTable" style="display:none;">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <footer>تم تصميم هذا البرنامج بواسطة أحمد اليوسف</footer>
+  </div>
+
+  <script>
+    window.onload = () => {
+      if (localStorage.getItem("loggedIn") === "true") {
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        checkPermissions();
+
+        const role = localStorage.getItem("userRole");
+        const welcome = document.getElementById("welcomeMessage");
+        if (role === "مدير") {
+          welcome.textContent = "👋 مرحباً بكم سيادة المدير المحترم!";
+        }
+        setTimeout(() => welcome.style.display = "none", 5000);
+      }
+
+      if (localStorage.getItem("excelData")) {
+        originalData = JSON.parse(localStorage.getItem("excelData"));
+      }
+
+      if (localStorage.getItem("darkMode") === "true") {
+        document.body.classList.add("dark");
+      }
+    };
+
+    function login() {
+      const c = document.getElementById("accessCode").value.trim();
+      const pass = document.getElementById("password").value.trim();
+      const role = document.getElementById("role").value;
+      const today = new Date();
+      const correctCode = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}/0988`;
+
+      if (pass !== "0988634015") {
+        document.getElementById("errorMsg").textContent = "⚠️ كلمة المرور غير صحيحة!";
+        return;
+      }
+
+      if ((role === "مدير" || role === "مساعد") && prompt("أدخل رمز التحقق:") !== "BB") {
+        document.getElementById("errorMsg").textContent = "⚠️ رمز التحقق غير صحيح!";
+        return;
+      }
+
+      if (c === correctCode) {
+        localStorage.setItem("loggedIn", "true");
+        localStorage.setItem("userRole", role);
+        location.reload();
+      } else {
+        document.getElementById("errorMsg").textContent = "⚠️ الكود غير صحيح!";
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      location.reload();
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+    }
+
+    function toggleRoleChange() {
+      const newRole = prompt("اكتب الصفة الوظيفية الجديدة (مدير / مساعد / عضو):");
+      if (newRole && ["مدير", "مساعد", "عضو"].includes(newRole)) {
+        const confirmCode = prompt("أدخل رمز التأكيد لتغيير الصفة:");
+        if (confirmCode === "BB") {
+          localStorage.setItem("userRole", newRole);
+          alert("✅ تم تغيير الصفة الوظيفية إلى: " + newRole);
+          location.reload();
+        } else {
+          alert("❌ رمز التأكيد غير صحيح.");
+        }
+      } else {
+        alert("❌ الصفة غير معروفة.");
+      }
+    }
+
+    function checkPermissions() {
+      const role = localStorage.getItem("userRole");
+      const hide = ["freeSearch", "gender"];
+      if (role === "عضو") {
+        hide.forEach(id => document.getElementById(id).style.display = "none");
+      }
+    }
+
+    let originalData = [], filteredData = [];
+
+    document.getElementById('excelFile').addEventListener('change', e => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      document.getElementById("progressBar").style.display = "block";
+      reader.onload = event => {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.SheetNames[0];
+        originalData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet]);
+        localStorage.setItem("excelData", JSON.stringify(originalData));
+        document.getElementById("progressFill").style.width = "100%";
+        setTimeout(() => document.getElementById("progressBar").style.display = "none", 500);
+        alert("✅ تم تحميل الملف!");
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function filterData() {
+      const field = document.getElementById("field").value.trim().toLowerCase();
+      const gender = document.getElementById("gender").value.trim().toLowerCase();
+      const location = document.getElementById("location").value.trim().toLowerCase();
+      const keywords = document.getElementById("freeSearch").value.trim().toLowerCase().split(" ");
+
+      filteredData = originalData.filter(row => {
+        const values = Object.values(row).map(v => String(v).toLowerCase());
+        const fieldMatch = field ? (row["التخصص"] || "").toLowerCase().includes(field) : true;
+        const genderMatch = gender ? (row["الجنس"] || "").toLowerCase().includes(gender) : true;
+        const locationMatch = location ? (row["المحافظة"] || "").toLowerCase().includes(location) : true;
+        const keywordMatch = keywords.every(k => values.some(v => v.includes(k)));
+        return fieldMatch && genderMatch && locationMatch && keywordMatch;
+      });
+
+      const countResult = document.getElementById("countResult");
+      const table = document.getElementById("resultsTable");
+      const thead = document.getElementById("tableHead");
+      const tbody = document.getElementById("tableBody");
+
+      if (filteredData.length === 0) {
+        countResult.textContent = "❌ لا يوجد متقدمين مطابقين.";
+        table.style.display = "none";
+        return;
+      }
+
+      countResult.textContent = `✅ عدد المتقدمين المطابقين: ${filteredData.length}`;
+      table.style.display = "table";
+
+      const keys = Object.keys(filteredData[0]);
+      thead.innerHTML = "<tr>" + keys.map(k => `<th>${k}</th>`).join("") + "</tr>";
+      tbody.innerHTML = "";
+      filteredData.forEach(row => {
+        tbody.innerHTML += "<tr>" + keys.map(k => `<td>${row[k] || ""}</td>`).join("") + "</tr>";
+      });
+    }
+
+    function downloadFiltered() {
+      if (filteredData.length === 0) {
+        alert("⚠️ لا توجد بيانات لتحميلها.");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(filteredData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "نتائج الفرز");
+      XLSX.writeFile(wb, "نتائج_الفرز.xlsx");
+    }
+  </script>
+</body>
+</html>
