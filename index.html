@@ -62,8 +62,6 @@
       border-radius: 12px;
     }
     .dropdown:hover .dropdown-content { display: block; }
-
-    /* ✅ تعديل الألوان حسب الوضع الليلي أو الفاتح */
     .dropdown-content button {
       background: none;
       border: none;
@@ -82,7 +80,6 @@
     .dropdown-content button:hover {
       background-color: #f0f0f0;
     }
-
     #mainApp { display: none; }
     .progress-bar { display: none; height: 8px; background: #ddd; margin-top: 10px; border-radius: 5px; }
     .progress-fill { height: 100%; width: 0; background: #2196f3; border-radius: 5px; }
@@ -121,7 +118,7 @@
     <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
 
     <label>🔍 بحث حر:
-      <input type="text" id="freeSearch" placeholder="">
+      <input type="text" id="freeSearch" placeholder="مثال: طب دمشق">
     </label>
     <label>🎓 التخصص:
       <select id="field">
@@ -131,7 +128,7 @@
         <option>هندسة معلوماتية</option>
         <option>هندسة</option>
         <option>إدارة الأعمال</option>
-        <option>موارد بشرية</option>
+        <option>تربية</option>
         <option>حقوق</option>
         <option>اقتصاد</option>
       </select>
@@ -155,7 +152,6 @@
     </label>
 
     <button onclick="filterData()">✅ ابدأ الفرز</button>
-
     <button onclick="downloadFiltered()" style="background-color: #4caf50;">📥 تحميل النتائج بعد الفرز</button>
 
     <div class="dropdown">
@@ -186,6 +182,10 @@
         const welcome = document.getElementById("welcomeMessage");
         if (role === "مدير") {
           welcome.textContent = "👋 مرحباً بكم سيادة المدير المحترم!";
+        } else if (role === "HR") {
+          welcome.textContent = "👋 مرحباً بكم في قسم الموارد البشرية.";
+        } else if (role === "FI") {
+          welcome.textContent = "👋 مرحباً بكم في الإدارة المالية.";
         }
         setTimeout(() => welcome.style.display = "none", 5000);
       }
@@ -200,11 +200,25 @@
     };
 
     function login() {
-      const c = document.getElementById("accessCode").value.trim();
+      const c = document.getElementById("accessCode").value.trim().toUpperCase();
       const pass = document.getElementById("password").value.trim();
       const role = document.getElementById("role").value;
       const today = new Date();
       const correctCode = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}/0988`;
+
+      if (c === "HR0988") {
+        localStorage.setItem("loggedIn", "true");
+        localStorage.setItem("userRole", "HR");
+        location.reload();
+        return;
+      }
+
+      if (c === "FI0988") {
+        localStorage.setItem("loggedIn", "true");
+        localStorage.setItem("userRole", "FI");
+        location.reload();
+        return;
+      }
 
       if (pass !== "0988634015") {
         document.getElementById("errorMsg").textContent = "⚠️ كلمة المرور غير صحيحة!";
@@ -236,8 +250,8 @@
     }
 
     function toggleRoleChange() {
-      const newRole = prompt("اكتب الصفة الوظيفية الجديدة (مدير / مساعد / عضو):");
-      if (newRole && ["مدير", "مساعد", "عضو"].includes(newRole)) {
+      const newRole = prompt("اكتب الصفة الوظيفية الجديدة (مدير / مساعد / عضو / HR / FI):");
+      if (newRole && ["مدير", "مساعد", "عضو", "HR", "FI"].includes(newRole)) {
         const confirmCode = prompt("أدخل رمز التأكيد لتغيير الصفة:");
         if (confirmCode === "BB") {
           localStorage.setItem("userRole", newRole);
